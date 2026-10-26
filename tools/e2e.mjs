@@ -189,11 +189,11 @@ for (const v of VIEWS.filter((x) => !only || x.tag === only)) {
     await page.evaluate(() => window.__app.award(60));
     if (await page.$('.modal')) { await shot(page, T('レベルアップ_たくさん')); await click(page, 'やったね'); }
     await click(page, 'ショップ'); await shot(page, T('ショップ'));
-    await click(page, '⭐ 3', '.shop-item button'); await shot(page, T('ショップ_かう'));
+    await page.evaluate((n) => [...document.querySelectorAll('.shop-item button')].find((b) => b.textContent.trim() === n && !b.disabled).click(), '3'); await new Promise((r) => setTimeout(r, 120)); await shot(page, T('ショップ_かう'));
     await click(page, 'かう');
-    await click(page, '⭐ 5', '.shop-item button'); await click(page, 'かう');
-    await click(page, 'ノートの いろ'); await click(page, '⭐ 4', '.shop-item button'); await click(page, 'かう'); await shot(page, T('ショップ_いろ'));
-    await click(page, 'わく'); await click(page, '⭐ 5', '.shop-item button'); await click(page, 'かう'); await shot(page, T('ショップ_わく'));
+    await page.evaluate((n) => [...document.querySelectorAll('.shop-item button')].find((b) => b.textContent.trim() === n && !b.disabled).click(), '5'); await new Promise((r) => setTimeout(r, 120)); await click(page, 'かう');
+    await click(page, 'ノートの いろ'); await page.evaluate((n) => [...document.querySelectorAll('.shop-item button')].find((b) => b.textContent.trim() === n && !b.disabled).click(), '4'); await new Promise((r) => setTimeout(r, 120)); await click(page, 'かう'); await shot(page, T('ショップ_いろ'));
+    await click(page, 'わく'); await page.evaluate((n) => [...document.querySelectorAll('.shop-item button')].find((b) => b.textContent.trim() === n && !b.disabled).click(), '5'); await new Promise((r) => setTimeout(r, 120)); await click(page, 'かう'); await shot(page, T('ショップ_わく'));
     const s = await state(page);
     if (s.stickers.length !== 2 || s.themes.length !== 2 || s.frames.length !== 2) throw new Error(`かった かず ${JSON.stringify([s.stickers, s.themes, s.frames])}`);
   });

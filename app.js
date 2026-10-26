@@ -36,6 +36,33 @@ const avatarImg = (i, cls = 'avatar') => (i < 0 ? h('span', { class: cls + ' emo
 const save = () => store(S);
 const shuffle = (a) => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
 
+
+// 線の アイコン（絵もじは 端末ごとに 見た目が かわり、やすっぽく 見えるので つかわない）
+const ICONS = {
+  speaker: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor" stroke="none"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>',
+  back: '<path d="M14.5 5.5L8 12l6.5 6.5"/>',
+  next: '<path d="M9.5 5.5L16 12l-6.5 6.5"/>',
+  gear: '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.9 1.9M16.6 16.6l1.9 1.9M5.5 18.5l1.9-1.9M16.6 7.4l1.9-1.9"/>',
+  pencil: '<path d="M4.5 19.5l1-4.5L16 4.5l3.5 3.5L9 18.5z"/><path d="M13.5 7l3.5 3.5"/>',
+  eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
+  bulb: '<path d="M9 17.5h6M10 20.5h4M12 3.5a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.2h5c0-.9.4-1.7 1.1-2.2A6 6 0 0 0 12 3.5z"/>',
+  refresh: '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4.5H15"/>',
+  lock: '<rect x="5.5" y="10.5" width="13" height="10" rx="2.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  bag: '<path d="M5 8.5h14l-1.2 11.5H6.2z"/><path d="M9 8.5V7a3 3 0 0 1 6 0v1.5"/>',
+  paw: '<circle cx="7" cy="9" r="1.9" fill="currentColor"/><circle cx="11" cy="6.5" r="1.9" fill="currentColor"/><circle cx="15.5" cy="7" r="1.9" fill="currentColor"/><circle cx="18.2" cy="10.8" r="1.8" fill="currentColor"/><path d="M8.5 16.5c0-3 2-5 4.2-5s4.3 2.2 4.3 5c0 2-1.6 2.6-4.3 2.1-2.6.5-4.2-.1-4.2-2.1z" fill="currentColor"/>',
+  plus: '<path d="M12 6v12M6 12h12"/>',
+  star: '<path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z" fill="#f6c343" stroke="#c98a1b" stroke-width="1.3"/>',
+};
+function ic(name, cls = '') {
+  const span = document.createElement('span');
+  span.className = 'ic ' + cls;
+  span.setAttribute('aria-hidden', 'true');
+  span.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
+  return span;
+}
+const starNum = (n, cls = '') => h('span', { class: 'starnum ' + cls }, ic('star'), String(n));
+
 // よみあげ（端末の 声。ネットは つかわない）
 function speak(text) {
   if (!SET.voice || !('speechSynthesis' in window)) return;
@@ -48,7 +75,7 @@ function speak(text) {
     speechSynthesis.speak(u);
   } catch { /* 声が でない 端末も ある */ }
 }
-const sayBtn = (text) => h('button', { class: 'say', 'aria-label': 'よみあげる', onclick: () => speak(text) }, '🔊');
+const sayBtn = (text) => h('button', { class: 'say', 'aria-label': 'よみあげる', onclick: () => speak(text) }, ic('speaker'));
 
 // やさしい 音（大きく しない・急に 鳴らさない）
 let actx;
@@ -91,13 +118,13 @@ addEventListener('popstate', (e) => {
 
 function bar(title, back = () => history.back()) {
   return h('header', { class: 'bar' },
-    h('button', { class: 'back', onclick: back }, h('span', { 'aria-hidden': 'true' }, '←'), ' もどる'),
+    h('button', { class: 'back', onclick: back }, ic('back'), 'もどる'),
     h('h1', {}, title),
     starChip());
 }
 function starChip() {
   return h('div', { class: 'chip', 'aria-label': `レベル ${level(S.exp)}、スター ${wallet(S)}` },
-    h('span', { class: 'lv' }, `Lv ${level(S.exp)}`), h('span', { class: 'st' }, `⭐ ${wallet(S)}`));
+    h('span', { class: 'lv' }, 'レベル', h('b', {}, String(level(S.exp)))), starNum(wallet(S), 'st'));
 }
 
 // ---------- ほめる・スター・レベルアップ ----------
@@ -123,13 +150,13 @@ function award(n, after) {
       h('div', { class: 'big-emo' }, dogImg('happy', 'dog mid')),
       h('h2', {}, `レベル ${lv} に なったよ！`),
       got.length ? h('p', {}, 'ショップで あたらしい ものが かえるよ。') : null,
-      got.length ? h('div', { class: 'row wrap center' }, got.slice(0, 6).map((it) => h('span', { class: 'mini' }, it.emoji ? itemImg(it, 'icon s') : '🎨', it.word))) : null,
+      got.length ? h('div', { class: 'row wrap center' }, got.slice(0, 6).map((it) => h('span', { class: 'mini' }, it.emoji ? itemImg(it, 'icon s') : h('span', { class: 'swatch', style: `background:${it.bg || '#fff'}` }), it.word))) : null,
       h('button', { class: 'btn primary', onclick: () => { closeModal(); after && after(); } }, 'やったね！'));
     speak(`レベル ${lv} に なったよ`);
   } else if (after) after();
 }
 const plusToast = (n) => {
-  const t = h('div', { class: 'toast', role: 'status' }, `⭐ +${n}`);
+  const t = h('div', { class: 'toast', role: 'status' }, ic('star'), `+${n}`);
   document.body.append(t); setTimeout(() => t.remove(), 1600);
 };
 
@@ -138,22 +165,28 @@ ROUTES.title = () => {
   const name = S.nick ? `${S.nick}さん、` : '';
   const hold = longPress(() => go('parent'));
   return h('div', { class: 'screen title' },
-    h('div', { class: 'top-row' }, starChip()),
-    h('h1', { class: 'logo' }, h('span', {}, 'あんしん'), h('span', {}, 'ポケット')),
-    h('div', { class: 'hello' }, dogImg('happy', 'dog hero'),
-      h('p', { class: 'bubble' }, `${name}こんにちは！`, h('br'), `${DOGS[S.dog].name}だよ。きょうは なにを する？`)),
+    h('header', { class: 'hero' },
+      pic('art/ui/hero.jpg', '', 'hero-img', ''),
+      h('div', { class: 'hero-top' }, starChip())),
+    h('h1', { class: 'logo' },
+      h('span', { class: 'logo-sub' }, 'きもちと ばめんの れんしゅう'),
+      h('span', { class: 'logo-main' }, 'あんしん', h('span', { class: 'logo-gap' }), 'ポケット')),
+    h('div', { class: 'hello' }, dogImg('happy', 'dog greet'),
+      h('p', { class: 'bubble' }, `${name}こんにちは！ ${DOGS[S.dog].name}だよ。`, h('br'), 'きょうは なにを する？')),
     h('nav', { class: 'menu4' },
-      menuBtn('きもちを よもう', dogImg('surprised', 'mi'), 'emotions', 'c1'),
-      menuBtn('れんしゅう しよう', pic('art/scenes/hospital_1.jpg', '🏥', 'mi photo'), 'scenes', 'c2'),
-      menuBtn('じぶん ノート', avatarImg(S.avatar, 'mi round'), 'note', 'c3'),
-      menuBtn('きょうの よてい', itemImg(PLAN_ITEMS[0], 'mi'), 'plan', 'c4')),
-    h('div', { class: 'row center sub' },
-      h('button', { class: 'btn ghost', onclick: () => go('shop') }, '🛍️ ショップ'),
-      h('button', { class: 'btn ghost', onclick: () => go('dogs') }, '🐶 いぬを えらぶ')),
-    h('button', { class: 'parent-btn', ...hold }, '⚙ おうちの ひと・スタッフ', h('small', {}, '（ながおし）')));
+      menuBtn('きもちを よもう', 'いぬの かおを みてみよう', 'tile_emotions', 'emotions', 'c1'),
+      menuBtn('れんしゅう しよう', 'びょういんや はいしゃ', 'tile_practice', 'scenes', 'c2'),
+      menuBtn('じぶん ノート', 'すきな ことを かこう', 'tile_note', 'note', 'c3'),
+      menuBtn('きょうの よてい', 'えで ならべよう', 'tile_plan', 'plan', 'c4')),
+    h('div', { class: 'sub2' },
+      h('button', { class: 'wide-card', onclick: () => go('shop') }, pic('art/ui/tile_shop.jpg', '', 'wide-img'), h('span', {}, h('b', {}, 'ショップ'), h('small', {}, 'スターで かえるよ'))),
+      h('button', { class: 'wide-card', onclick: () => go('dogs') }, dogImg('happy', 'wide-img dogface'), h('span', {}, h('b', {}, 'いぬを えらぶ'), h('small', {}, `いまは ${DOGS[S.dog].name}`)))),
+    h('button', { class: 'parent-btn', ...hold }, ic('gear'), 'おうちの ひと・スタッフ', h('small', {}, '（ながおし）')));
 };
-function menuBtn(label, img, route, cls) {
-  return h('button', { class: `menu-btn ${cls}`, onclick: () => go(route) }, h('span', { class: 'mimg' }, img), h('span', { class: 'ml' }, label));
+function menuBtn(label, sub, tile, route, cls) {
+  return h('button', { class: `menu-btn ${cls}`, onclick: () => go(route) },
+    h('span', { class: 'mimg' }, pic(`art/ui/${tile}.jpg`, '', 'tile-img')),
+    h('span', { class: 'ml' }, label), h('small', { class: 'ms' }, sub));
 }
 // こどもが まちがえて ひらかない ように、2びょう おしつづけたら ひらく
 function longPress(fn) {
@@ -179,13 +212,13 @@ ROUTES.emotions = () => h('div', { class: 'screen' }, bar('きもちを よも�
   h('div', { class: 'hello small' }, dogImg('calm', 'dog mid'),
     h('p', { class: 'bubble' }, 'いぬの からだを よく みると、きもちの ヒントが あるよ。')),
   h('div', { class: 'grid2' },
-    h('button', { class: 'card big-choice', onclick: () => go('emoList') }, h('span', { class: 'emoji xl' }, '📖'), h('b', {}, 'きもちを みる'), h('small', {}, '6つの きもち')),
-    h('button', { class: 'card big-choice', onclick: () => go('quiz') }, h('span', { class: 'emoji xl' }, '❓'), h('b', {}, 'あてっこ'), h('small', {}, 'どの きもちかな？'))));
+    h('button', { class: 'card big-choice', onclick: () => go('emoList') }, pic('art/ui/tile_emotions.jpg', '', 'tile-img'), h('b', {}, 'きもちを みる'), h('small', {}, '6つの きもち')),
+    h('button', { class: 'card big-choice', onclick: () => go('quiz') }, dogImg('surprised', 'dog mid'), h('b', {}, 'あてっこ'), h('small', {}, 'どの きもちかな？'))));
 
 ROUTES.emoList = () => h('div', { class: 'screen' }, bar('きもちを みる'),
   h('div', { class: 'grid2 emo-grid' }, EMOTIONS.map((e, i) => h('button', {
     class: 'card emo', style: `--c:${e.color}`, onclick: () => go('emoDetail', i),
-  }, dogImg(e.id, 'dog mid'), h('b', {}, e.word), S.emoSeen.includes(i) ? h('span', { class: 'seen', 'aria-label': 'みた' }, '✔') : null))));
+  }, dogImg(e.id, 'dog mid'), h('b', {}, e.word), S.emoSeen.includes(i) ? h('span', { class: 'seen', 'aria-label': 'みた' }, ic('check')) : null))));
 
 ROUTES.emoDetail = (i) => {
   const e = EMOTIONS[i];
@@ -193,8 +226,8 @@ ROUTES.emoDetail = (i) => {
   setTimeout(() => speak(`${e.word}。${e.see}`), 300);
   return h('div', { class: 'screen' }, bar(e.word),
     h('div', { class: 'emo-hero', style: `--c:${e.color}` }, dogImg(e.id, 'dog big'), h('h2', { class: 'emo-word' }, e.word)),
-    h('section', { class: 'panel' }, h('h3', {}, '👀 ここを みてね'), h('p', {}, e.see), sayBtn(`${e.word}。${e.see}`)),
-    h('section', { class: 'panel soft' }, h('h3', {}, '💡 こんな ときは'), h('p', {}, e.tip), sayBtn(e.tip)),
+    h('section', { class: 'panel' }, h('h3', {}, ic('eye'), 'ここを みてね'), h('p', {}, e.see), sayBtn(`${e.word}。${e.see}`)),
+    h('section', { class: 'panel soft' }, h('h3', {}, ic('bulb'), 'こんな ときは'), h('p', {}, e.tip), sayBtn(e.tip)),
     h('div', { class: 'row between pager' },
       h('button', { class: 'btn', disabled: i === 0, onclick: () => go('emoDetail', i - 1, true) }, '← まえ'),
       h('span', { class: 'count' }, `${i + 1} / ${EMOTIONS.length}`),
@@ -208,7 +241,7 @@ ROUTES.quiz = () => {
   const next = () => {
     if (k >= order.length) {
       box.replaceChildren(
-        h('div', { class: 'hello' }, dogImg('happy', 'dog hero'), h('p', { class: 'bubble' }, 'ぜんぶ できたね！', h('br'), `⭐ ${got}こ もらったよ。`)),
+        h('div', { class: 'hello' }, dogImg('happy', 'dog large'), h('p', { class: 'bubble' }, 'ぜんぶ できたね！', h('br'), 'スターを ', starNum(got), ' こ もらったよ。')),
         h('div', { class: 'row center' },
           h('button', { class: 'btn', onclick: () => history.back() }, 'おわる'),
           h('button', { class: 'btn primary', onclick: () => go('quiz', null, true) }, 'もう いちど')));
@@ -257,7 +290,7 @@ ROUTES.scenes = () => h('div', { class: 'screen' }, bar('れんしゅう しよ�
   h('p', { class: 'lead' }, 'どの れんしゅうを する？'),
   h('div', { class: 'grid2' }, SCENES.map((sc, i) => h('button', { class: 'card scene', onclick: () => go('scene', { i, k: 0 }) },
     pic(`art/scenes/${sc.id}_1.jpg`, '🖼️', 'thumb'), h('b', {}, sc.title), h('small', {}, sc.sub),
-    S.scenesDone.includes(i) ? h('span', { class: 'seen', 'aria-label': 'できた' }, '✔') : null))));
+    S.scenesDone.includes(i) ? h('span', { class: 'seen', 'aria-label': 'できた' }, ic('check')) : null))));
 
 ROUTES.scene = ({ i, k }) => {
   const sc = SCENES[i];
@@ -279,7 +312,7 @@ function sceneFeel(i) {
   const reply = h('div', { class: 'reply', hidden: true });
   let given = false;
   return h('div', { class: 'screen' }, bar(SCENES[i].title),
-    h('div', { class: 'hello' }, dogImg('happy', 'dog hero'), h('p', { class: 'bubble' }, 'さいごまで みたね！', h('br'), 'いま どんな きもち？')),
+    h('div', { class: 'hello' }, dogImg('happy', 'dog large'), h('p', { class: 'bubble' }, 'さいごまで みたね！', h('br'), 'いま どんな きもち？')),
     h('div', { class: 'grid3' }, EMOTIONS.map((e) => h('button', {
       class: 'card emo small', style: `--c:${e.color}`,
       onclick: () => {
@@ -310,7 +343,7 @@ ROUTES.note = () => {
   const slot = (n) => {
     const v = S.slots[n];
     return h('button', { class: 'slot s' + n + (v < 0 ? ' empty' : ''), 'aria-label': v < 0 ? 'シールを はる' : STICKERS[v].word, onclick: () => pickSticker(n) },
-      v < 0 ? '＋' : itemImg(STICKERS[v], 'icon'));
+      v < 0 ? ic('plus') : itemImg(STICKERS[v], 'icon'));
   };
   const line = (label, items) => h('div', { class: 'nline' }, h('h3', {}, label),
     items.length ? h('div', { class: 'chips' }, items) : h('p', { class: 'muted' }, 'まだ かいて いないよ'));
@@ -329,8 +362,8 @@ ROUTES.note = () => {
       line('にがてな こと', S.hard.map((i) => chipOf(CARD_HARD[i]))),
       line('おちつく ほうほう', S.calm.map((i) => chipOf(CARD_CALM[i])))),
     h('div', { class: 'row center' },
-      h('button', { class: 'btn primary', onclick: () => go('noteEdit', 0) }, empty ? '✏️ ノートを かく' : '✏️ かきなおす'),
-      h('button', { class: 'btn', onclick: () => go('noteShow') }, '👀 みせる')));
+      h('button', { class: 'btn primary', onclick: () => go('noteEdit', 0) }, ic('pencil'), empty ? 'ノートを かく' : 'かきなおす'),
+      h('button', { class: 'btn', onclick: () => go('noteShow') }, ic('eye'), 'みせる')));
 };
 // ひとに みせる ための、ボタンの ない ノート
 ROUTES.noteShow = () => {
@@ -458,13 +491,13 @@ ROUTES.plan = () => {
           }
           redraw();
         },
-      }, x.done ? '✔ できた' : 'できた？'));
+      }, x.done ? [ic('check'), 'できた'] : 'できた？'));
   }));
   return h('div', { class: 'screen' }, bar('きょうの よてい'),
     p.items.length ? list : h('div', { class: 'hello small' }, dogImg('calm', 'dog mid'),
       h('p', { class: 'bubble' }, 'きょうの よていを ならべよう。', h('br'), 'したの えを おしてね。')),
     !p.items.length && p.prev && p.prev.length ? h('div', { class: 'row center' },
-      h('button', { class: 'btn', onclick: () => { p.items = p.prev.map((id) => ({ id })); p.prev = []; redraw(); } }, '🔁 きのうと おなじ')) : null,
+      h('button', { class: 'btn', onclick: () => { p.items = p.prev.map((id) => ({ id })); p.prev = []; redraw(); } }, ic('refresh'), 'きのうと おなじ')) : null,
     p.items.length && p.items.every((x) => x.done) ? h('p', { class: 'hint good center' }, 'ぜんぶ できたね！ すごい！') : null,
     h('h2', { class: 'sub-h' }, 'よていを ふやす'),
     h('div', { class: 'grid4 palette' }, PLAN_ITEMS.map((it) => h('button', {
@@ -494,21 +527,21 @@ ROUTES.shop = (tab = 0) => {
     if (own && T.key === 'stickers') action = h('span', { class: 'tag ok' }, 'もってる');
     else if (own) action = using ? h('span', { class: 'tag ok' }, 'つかってる')
       : h('button', { class: 'btn small', onclick: () => { S[T.key === 'themes' ? 'theme' : 'frame'] = i; save(); go('shop', tab, true); } }, 'つかう');
-    else if (locked) action = h('span', { class: 'tag' }, `🔒 レベル ${it.lv}`);
-    else action = h('button', { class: 'btn small primary', disabled: wallet(S) < it.price, onclick: () => buy(T, i, tab) }, `⭐ ${it.price}`);
+    else if (locked) action = h('span', { class: 'tag' }, ic('lock'), `レベル ${it.lv}`);
+    else action = h('button', { class: 'btn small primary', disabled: wallet(S) < it.price, onclick: () => buy(T, i, tab) }, starNum(it.price));
     return h('div', { class: 'card shop-item' + (locked ? ' locked' : '') }, look(it), h('b', {}, it.word), action);
   });
   return h('div', { class: 'screen' }, bar('ショップ'),
-    h('p', { class: 'lead small' }, lv < LEVEL_MAX ? `つぎの レベルまで あと ⭐ ${nextNeed}` : 'さいこう レベル！'),
+    h('p', { class: 'lead small' }, lv < LEVEL_MAX ? ['つぎの レベルまで あと ', starNum(nextNeed)] : 'さいこう レベル！'),
     h('div', { class: 'tabs', role: 'tablist' }, SHOP_TABS.map((t, j) => h('button', {
       role: 'tab', 'aria-selected': j === tab ? 'true' : 'false', class: j === tab ? 'on' : '', onclick: () => go('shop', j, true),
     }, t.label))),
     h('div', { class: 'grid3' }, cards),
-    h('p', { class: 'muted center' }, '⭐ は れんしゅう すると もらえるよ。'));
+    h('p', { class: 'muted center' }, 'スターは、れんしゅう すると もらえるよ。'));
 };
 function buy(T, i, tab) {
   const it = T.list[i];
-  modal(h('h2', {}, `${it.word} を かう？`), h('p', { class: 'center' }, `⭐ ${it.price} つかうよ。（いま ⭐ ${wallet(S)}）`),
+  modal(h('h2', {}, `${it.word} を かう？`), h('p', { class: 'center' }, starNum(it.price), ' つかうよ。（いま ', starNum(wallet(S)), '）'),
     h('div', { class: 'row center' },
       h('button', { class: 'btn', onclick: closeModal }, 'やめる'),
       h('button', { class: 'btn primary', onclick: () => {
