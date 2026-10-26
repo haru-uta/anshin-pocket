@@ -184,7 +184,8 @@ for (const v of VIEWS.filter((x) => !only || x.tag === only)) {
     for (let i = 0; i < 6; i++) {
       await page.goto(BASE, { waitUntil: 'networkidle0' });
       await page.evaluate((i) => window.__app.go('scene', { i, k: 0 }), i);
-      for (let k = 0; k < 6; k++) { await audit(page, `${T('ばめん')}${i}_${k + 1}`); if (v.tag === 'se') await shot(page, T(`ばめん${i}_${k + 1}`)); await click(page, k < 5 ? 'つぎ' : 'おわり'); }
+      const n = await page.evaluate(() => document.querySelectorAll('.dots span').length);
+      for (let k = 0; k < n; k++) { await audit(page, `${T('ばめん')}${i}_${k + 1}`); if (v.tag === 'se') await shot(page, T(`ばめん${i}_${k + 1}`)); await click(page, k < n - 1 ? 'つぎ' : 'おわり'); }
     }
   });
   await step(`${v.tag} ショップ`, async () => {

@@ -66,13 +66,29 @@ function ic(name, cls = '') {
 const starNum = (n, cls = '') => h('span', { class: 'starnum ' + cls }, ic('star'), String(n));
 
 // よみあげ（端末の 声。ネットは つかわない）
-function speak(text) {
-  if (!SET.voice || !('speechSynthesis' in window)) return;
+// 端末に ある 日本語の 声から、やさしい 女性の 自然な 声を えらぶ（おとなが 設定で えらび なおせる）
+const VOICE_GOOD = /natural|neural|enhanced|premium|拡張|プレミアム/i;
+const VOICE_FEMALE = /nanami|kyoko|o-ren|haruka|ayumi|mayu|aoi|shiori|nana|sayaka|google/i;
+const VOICE_MALE = /otoya|hattori|ichiro|keita|daichi|naoki|takumi|kenji/i;
+let voiceList = [];
+function jaVoices() {
+  try { return speechSynthesis.getVoices().filter((v) => v.lang && v.lang.replace('_', '-').toLowerCase().startsWith('ja')); } catch { return []; }
+}
+function voiceScore(v) {
+  return (VOICE_GOOD.test(v.name) ? 10 : 0) + (VOICE_FEMALE.test(v.name) ? 5 : 0) - (VOICE_MALE.test(v.name) ? 100 : 0) + (v.localService ? 1 : 0);
+}
+function pickVoice() {
+  voiceList = jaVoices();
+  return voiceList.find((v) => v.name === SET.voiceName) || voiceList.slice().sort((x, y) => voiceScore(y) - voiceScore(x))[0] || null;
+}
+if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.addEventListener?.('voiceschanged', pickVoice); }
+function speak(text, force) {
+  if ((!SET.voice && !force) || !('speechSynthesis' in window)) return;
   try {
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text.replace(/ /g, ''));
-    u.lang = 'ja-JP'; u.rate = 0.9; u.pitch = 1.05;
-    const v = speechSynthesis.getVoices().find((x) => x.lang && x.lang.startsWith('ja'));
+    u.lang = 'ja-JP'; u.rate = 0.88; u.pitch = 1.0;
+    const v = pickVoice();
     if (v) u.voice = v;
     speechSynthesis.speak(u);
   } catch { /* 声が でない 端末も ある */ }
@@ -614,6 +630,18 @@ function buy(T, i, tab) {
 }
 
 // ---------- おうちの ひと・スタッフ ----------
+function voicePicker() {
+  const vs = jaVoices();
+  if (!vs.length) return h('p', { class: 'muted' }, 'この端末には日本語の読み上げの声がありません。');
+  const cur = pickVoice();
+  const sel = h('select', { class: 'voice-sel', 'aria-label': '読み上げの声', onchange: (e) => { SET.voiceName = e.target.value; saveSet(); speak('こんにちは。いっしょに れんしゅう しようね。', true); } },
+    vs.slice().sort((x, y) => voiceScore(y) - voiceScore(x)).map((v) => h('option', { value: v.name, selected: cur && v.name === cur.name ? true : false }, v.name)));
+  return h('div', { class: 'voice-box' },
+    h('label', {}, '声', sel),
+    h('button', { class: 'btn small', onclick: () => speak('こんにちは。いっしょに れんしゅう しようね。', true) }, ic('speaker'), 'きいてみる'),
+    h('p', { class: 'muted' }, 'iPhone・iPad は「設定 → アクセシビリティ → 読み上げコンテンツ → 声 → 日本語」で「Kyoko（拡張）」などを入れると、より自然な声になります。'));
+}
+
 ROUTES.parent = () => {
   const toggle = (key, label) => h('label', { class: 'switch' },
     h('input', { type: 'checkbox', checked: SET[key], onchange: (e) => { SET[key] = e.target.checked; saveSet(); if (key === 'bgm') bgmApply(); document.body.classList.toggle('calm', SET.calm); document.body.classList.toggle('big', SET.big); } }),
@@ -625,6 +653,7 @@ ROUTES.parent = () => {
   return h('div', { class: 'screen adult' }, bar('おうちの方・スタッフ'),
     h('section', { class: 'panel' }, h('h2', {}, '設定'),
       toggle('voice', '文の読み上げ（端末の音声）'),
+      voicePicker(),
       toggle('sound', '効果音（小さな音）'),
       toggle('bgm', 'BGM（小さな音楽）'),
       toggle('calm', '動きを少なくする'),
