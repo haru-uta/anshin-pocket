@@ -5,7 +5,7 @@ import { load, store, fresh, normalize, level, wallet, toCode, fromCode, prettyC
 let S = load();
 const SET_KEY = 'anshin-pocket-settings';
 const SET = (() => {
-  const d = { voice: true, sound: true, bgm: true, calm: false, big: false };
+  const d = { voice: true, sound: true, bgm: false, calm: false, big: false };
   try { return { ...d, ...JSON.parse(localStorage.getItem(SET_KEY) || '{}') }; } catch { return d; }
 })();
 const saveSet = () => { try { localStorage.setItem(SET_KEY, JSON.stringify(SET)); } catch { /* 保存できなくても つづける */ } };
