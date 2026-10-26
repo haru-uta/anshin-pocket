@@ -289,6 +289,38 @@ for (const v of VIEWS.filter((x) => !only || x.tag === only)) {
   for (const e of errors) problems.push(`[${v.tag} エラー] ${e}`);
   await ctx.close();
 }
+// 音（聴覚過敏への 配慮）: はじめての 端末は 自動で 鳴らない。スピーカーの ボタンは 鳴る。
+// まえから つかって いる 端末（セーブが あって 設定が ない）は、まえの まま ON。
+await step('音は さいしょ OFF', async () => {
+  const ctx = await browser.createBrowserContext();
+  const page = await ctx.newPage();
+  await page.setViewport(VIEWS[1]);
+  await page.evaluateOnNewDocument(() => {
+    window.__sounds = [];
+    const AC = window.AudioContext;
+    window.AudioContext = function (...a) { const c = new AC(...a); const o = c.createOscillator.bind(c); c.createOscillator = () => { window.__sounds.push('osc'); return o(); }; return c; };
+    if (window.speechSynthesis) window.speechSynthesis.speak = (u) => { window.__sounds.push('speak:' + u.text); };
+  });
+  await page.goto(BASE, { waitUntil: 'networkidle0' });
+  const set = await page.evaluate(() => JSON.parse(localStorage.getItem('anshin-pocket-settings') || '{}'));
+  if (set.voice !== false || set.sound !== false) throw new Error(`はじめての 端末で 音が OFF で のこって いない: ${JSON.stringify(set)}`);
+  await page.reload({ waitUntil: 'networkidle0' });
+  const set2 = await page.evaluate(() => JSON.parse(localStorage.getItem('anshin-pocket-settings')));
+  if (set2.voice || set2.sound) throw new Error('2かいめに ひらくと 音が ON に なった');
+  await page.evaluate(() => window.__app.go('emoDetail', 0));
+  await new Promise((r) => setTimeout(r, 900));
+  let snd = await page.evaluate(() => window.__sounds.splice(0));
+  if (snd.length) throw new Error(`自動で 鳴った: ${snd.join(', ')}`);
+  await page.$eval('.say', (e) => e.click());
+  snd = await page.evaluate(() => window.__sounds.splice(0));
+  if (!snd.some((x) => x.startsWith('speak:'))) throw new Error('スピーカーの ボタンで よみあげない');
+  // まえから つかって いる 端末
+  await page.evaluate(() => { localStorage.removeItem('anshin-pocket-settings'); localStorage.setItem('anshin-pocket-v1', localStorage.getItem('anshin-pocket-v1') || '{}'); });
+  await page.goto(BASE, { waitUntil: 'networkidle0' });
+  const old = await page.evaluate(() => JSON.parse(localStorage.getItem('anshin-pocket-settings') || '{}'));
+  if (!old.voice || !old.sound) throw new Error(`まえから つかって いる 端末の 設定が かわった: ${JSON.stringify(old)}`);
+  await ctx.close();
+});
 await browser.close();
 server.close();
 

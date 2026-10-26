@@ -4,9 +4,22 @@ import { load, store, fresh, normalize, level, wallet, toCode, fromCode, prettyC
 
 let S = load();
 const SET_KEY = 'anshin-pocket-settings';
+const SAVE_KEY = 'anshin-pocket-v1'; // save.js の KEY と おなじ
+// 聴覚過敏の 子が いるので、音は さいしょ ぜんぶ OFF（2026-10-26 代表「A」）。
+// voice = 画面を ひらいた ときに 自動で よみあげる。スピーカーの ボタンは OFF でも よみあげる。
+// まえから つかって いる 端末（セーブが ある のに 設定が ない）は、まえの まま（ON）に して かえない。
 const SET = (() => {
-  const d = { voice: true, sound: true, bgm: false, calm: false, big: false };
-  try { return { ...d, ...JSON.parse(localStorage.getItem(SET_KEY) || '{}') }; } catch { return d; }
+  const d = { voice: false, sound: false, bgm: false, calm: false, big: false };
+  try {
+    const raw = localStorage.getItem(SET_KEY);
+    if (!raw && localStorage.getItem(SAVE_KEY)) {
+      const old = { ...d, voice: true, sound: true };
+      localStorage.setItem(SET_KEY, JSON.stringify(old));
+      return old;
+    }
+    if (!raw) localStorage.setItem(SET_KEY, JSON.stringify(d)); // はじめての 端末: OFF を のこす（2かいめから「まえからの 端末」と まちがえない）
+    return { ...d, ...JSON.parse(raw || '{}') };
+  } catch { return d; }
 })();
 const saveSet = () => { try { localStorage.setItem(SET_KEY, JSON.stringify(SET)); } catch { /* 保存できなくても つづける */ } };
 const app = document.getElementById('app');
@@ -95,7 +108,7 @@ function speak(text, force) {
     speechSynthesis.speak(u);
   } catch { /* 声が でない 端末も ある */ }
 }
-const sayBtn = (text) => h('button', { class: 'say', 'aria-label': 'よみあげる', onclick: () => speak(text) }, ic('speaker'));
+const sayBtn = (text) => h('button', { class: 'say', 'aria-label': 'よみあげる', onclick: () => speak(text, true) }, ic('speaker'));
 
 // やさしい 音（大きく しない・急に 鳴らさない）
 let actx;
@@ -654,7 +667,7 @@ ROUTES.parent = () => {
   const loadMsg = h('p', { class: 'muted', role: 'status' }, '');
   return h('div', { class: 'screen adult' }, bar('おうちの方・スタッフ'),
     h('section', { class: 'panel' }, h('h2', {}, '設定'),
-      toggle('voice', '文の読み上げ（端末の音声）'),
+      toggle('voice', '画面を開いたときに文を自動で読み上げる（端末の音声）。オフでも、スピーカーのボタンを押すと読み上げます'),
       voicePicker(),
       toggle('sound', '効果音（小さな音）'),
       toggle('bgm', 'BGM（小さな音楽）'),
