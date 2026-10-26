@@ -58,6 +58,7 @@ JOBS = {
         '2 the child and parent arrive at a school entrance gate; 3 a busy school gym with many people, the child wears ear muffs; '
         '4 the child finds a chair with a name tag in a row; 5 the child rests on a bench in a quiet corner with a parent; '
         '6 the child and parent walk home holding hands at sunset.')),
+    # 2026-10-26 代表: 訪問で手洗い・体温・血圧の場面は出さない（3・4枚目は使わない。1,2,5,6 → visit_1〜4）
     'scene_visit': ('ref', SCENE.format(p='1 a front door of a Japanese house with an intercom button being pressed; '
         '2 the child waves hello to a friendly visiting nurse in a light green polo shirt at the door; '
         '3 the nurse washes hands at a sink; 4 the nurse measures the child\'s blood pressure with a soft cuff on the arm at a table; '
