@@ -21,6 +21,11 @@ ICONS = ('Draw ONE image: a {g} grid of {n} small separate icons, each a simple 
          'cute, simple, instantly recognizable by a young child. Icons in order (left to right, top to bottom): {p} ' + STYLE)
 
 JOBS = {
+    'app_icon': ('ref', 'Draw ONE square app icon illustration (1024x1024), filling the whole square edge to edge: a warm soft yellow background; '
+        'in the center a big soft mint-green fabric pocket with visible white stitching, and the dog from the reference (miniature schnauzer, '
+        'salt-and-pepper coat, mint bandana) happily peeking out of the pocket showing its head and front paws, big friendly face, '
+        'a small pink heart floating above. Bold clear shapes and strong dark outlines so it is recognizable at very small sizes on a phone '
+        'home screen. Black brush-pen lines with soft watercolor. No text, no letters, no rounded corners, no border.'),
     'dog_shiba': ('ref_sheet', DOG.format(d='a Shiba Inu with red-orange and cream coat, curled tail, wearing a pale coral bandana')),
     'dog_poodle': ('ref_sheet', DOG.format(d='a cream-colored Toy Poodle with curly fur, wearing a pale pink bandana')),
     'dog_dachs': ('ref_sheet', DOG.format(d='a chocolate-and-tan Miniature Dachshund with long ears, wearing a pale yellow bandana')),
