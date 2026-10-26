@@ -321,3 +321,7 @@ body.big .sub2 { grid-template-columns: 1fr; }
 .form .field, .modal .field { display: flex; flex-direction: column; gap: 4px; font-weight: 700; margin: 8px 0; }
 .form .field input, .modal .field input { font: inherit; font-size: 1.1em; padding: 10px 12px; min-height: 50px; border-radius: 14px; border: 0; background: #fff; box-shadow: 0 0 0 2px var(--line) inset; }
 .modal .field input { letter-spacing: .1em; }
+
+/* 大きい字でも よていの 名前を 言葉の とちゅうで 改行しない（iPhone SE で「かんごしさん」が 割れた） */
+.plan li b { white-space: nowrap; }
+body.big .plan li b { font-size: .95em; }
