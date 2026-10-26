@@ -1,6 +1,7 @@
 import { DOGS, EMOTIONS, SCENES, CARD_HARD, CARD_CALM, PLAN_ITEMS, FOODS, PLAYS, COLORS, AVATAR_COUNT,
   STICKERS, THEMES, FRAMES, LEVEL_MAX, levelNeed } from './data.js';
-import { load, store, fresh, normalize, level, wallet, toCode, fromCode, prettyCode, cleanNick, NICK_MAX, SLOTS } from './save.js';
+import { load, store, fresh, normalize, level, wallet, cleanNick, NICK_MAX, SLOTS } from './save.js';
+import * as Sync from './sync.js';
 
 let S = load();
 const SET_KEY = 'anshin-pocket-settings';
@@ -48,7 +49,8 @@ const seeOf = (e) => (DOGS[S.dog].dog ? e.see : e.seeAny || e.see);
 const dogImg = (emo, cls = 'dog') => pic(`art/dogs/${DOGS[S.dog].id}_${emo}.png`, '🐶', cls, `${DOGS[S.dog].name}（${EMOTIONS.find((e) => e.id === emo)?.word || ''}）`);
 const itemImg = (it, cls = 'icon') => pic(`art/items/${it.id}.png`, it.emoji, cls, '');
 const avatarImg = (i, cls = 'avatar') => (i < 0 ? h('span', { class: cls + ' emoji' }, '🙂') : pic(`art/avatars/a${i}.png`, '🙂', cls, 'じぶん'));
-const save = () => store(S);
+// セーブ。あいことばが あれば 置き場にも おくる（進み具合だけ）
+const save = () => { store(S); Sync.changed(); };
 const shuffle = (a) => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
 
 
@@ -228,8 +230,10 @@ function modal(...kids) {
 // スターを ふやす。レベルが あがったら おしらせ。
 function award(n, after) {
   const before = level(S.exp);
-  S.exp = Math.min(16383, S.exp + n);
+  const add = Math.min(16383, S.exp + n) - S.exp;
+  S.exp += add;
   save();
+  Sync.earned(add); // もらった 1かいずつを 置き場へ（2つの 端末で もらっても 両方 のこる）
   const lv = level(S.exp);
   document.querySelectorAll('.chip').forEach((c) => c.replaceWith(starChip()));
   if (lv > before) {
@@ -661,10 +665,6 @@ ROUTES.parent = () => {
   const toggle = (key, label) => h('label', { class: 'switch' },
     h('input', { type: 'checkbox', checked: SET[key], onchange: (e) => { SET[key] = e.target.checked; saveSet(); if (key === 'bgm') bgmApply(); document.body.classList.toggle('calm', SET.calm); document.body.classList.toggle('big', SET.big); } }),
     h('span', {}, label));
-  const code = toCode(S);
-  const copyMsg = h('span', { class: 'muted', role: 'status' }, '');
-  const inp = h('textarea', { class: 'code-in', rows: '3', 'aria-label': 'あいことば', placeholder: 'あいことばを いれてください（40もじ）' });
-  const loadMsg = h('p', { class: 'muted', role: 'status' }, '');
   return h('div', { class: 'screen adult' }, bar('おうちの方・スタッフ'),
     h('section', { class: 'panel' }, h('h2', {}, '設定'),
       toggle('voice', '画面を開いたときに文を自動で読み上げる（端末の音声）。オフでも、スピーカーのボタンを押すと読み上げます'),
@@ -673,43 +673,142 @@ ROUTES.parent = () => {
       toggle('bgm', 'BGM（小さな音楽）'),
       toggle('calm', '動きを少なくする'),
       toggle('big', '文字を大きくする')),
-    h('section', { class: 'panel' }, h('h2', {}, 'あいことば（別の端末で続きから）'),
-      h('p', {}, 'この端末の進み具合（レベル・スター・ノート・ショップの品）を、40文字のひらがなにしたものです。別の端末で入力すると、続きから始められます。'),
-      h('p', { class: 'code', 'data-testid': 'code' }, prettyCode(code)),
-      h('div', { class: 'row' },
-        h('button', { class: 'btn small', onclick: async () => {
-          try { await navigator.clipboard.writeText(code); copyMsg.textContent = 'コピーしました'; } catch { copyMsg.textContent = 'コピーできませんでした。書き写してください。'; }
-        } }, 'コピー'), copyMsg),
-      h('h3', {}, '別の端末のあいことばを入れる'),
-      inp,
-      h('button', { class: 'btn small primary', onclick: () => {
-        const s = fromCode(inp.value);
-        if (!s) { loadMsg.textContent = 'あいことばが正しくありません。1文字ずつ確かめてください（区切りの空白はあってもなくても大丈夫です）。'; return; }
-        modal(h('h2', {}, '続きから始めますか？'),
-          h('p', { class: 'adult' }, `レベル ${level(s.exp)}・スター ${wallet(s)}${s.nick ? `・なまえ「${s.nick}」` : ''} のセーブです。この端末の今の進み具合は上書きされます。`),
-          h('div', { class: 'row center' },
-            h('button', { class: 'btn', onclick: closeModal }, 'やめる'),
-            h('button', { class: 'btn primary', onclick: () => { S = s; save(); closeModal(); go('title', null, true); } }, '続きから始める')));
-      } }, '読み込む'), loadMsg),
+    aikoPanel(),
     h('section', { class: 'panel' }, h('h2', {}, 'このアプリについて'),
       h('p', {}, '気持ちの読み取りや、病院・散髪などの場面を前もって知るための練習用アプリです。診断や治療を目的としたものではありません。'),
-      h('p', {}, '入力した内容と進み具合は、この端末の中だけに保存されます。インターネットには送信しません。'),
+      h('p', {}, 'じぶんノートの内容（なまえ・好きなもの・にがてなこと など）は、この端末の中だけに保存されます。インターネットには送信しません。'),
+      h('p', {}, 'あいことばを入れた端末では、進み具合（レベル・スター・なかま・ショップの品・見た気持ち・した練習）だけを会社の置き場に送ります。'),
       h('p', { class: 'muted' }, '訪問看護ステーションはるうた')),
     h('section', { class: 'panel' }, h('h2', {}, 'はじめから'),
-      h('p', {}, 'この端末のセーブを消して、最初から始めます。あいことばを控えておくと元に戻せます。'),
+      h('p', {}, 'この端末のセーブを消して、最初から始めます。あいことばも外れます（置き場の進み具合は残り、あいことばを入れればまた続きから始められます）。'),
       h('button', { class: 'btn small danger', onclick: () => modal(h('h2', {}, '本当に消しますか？'),
         h('p', { class: 'adult' }, 'レベル・スター・ノート・ショップの品がすべて消えます。'),
         h('div', { class: 'row center' },
           h('button', { class: 'btn', onclick: closeModal }, 'やめる'),
           h('button', { class: 'btn danger', onclick: () => {
-            S = fresh(); save();
-            try { localStorage.removeItem(PLAN_KEY); localStorage.removeItem('anshin-pocket-note-done'); } catch { /* なし */ }
+            Sync.forget(); clearLocal();
             closeModal(); go('title', null, true);
           } }, '消す'))) }, 'セーブを消す')));
 };
 
+// ---------- あいことば（わたしの ミカタと 同じ。2026-10-26 代表「A」）----------
+// 最初に 1回だけ 作って 変えない。支援者は 電子カルテに 書く。職員の iPad で 呼び出せる。
+// この端末の セーブと ノートを ぜんぶ けす（職員の iPad で 次の 子に うつる とき・はじめから）
+function clearLocal() {
+  S = fresh(); store(S);
+  try { localStorage.removeItem(PLAN_KEY); localStorage.removeItem('anshin-pocket-note-done'); } catch { /* なし */ }
+}
+const fmtWhen = (t) => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+const keyBox = (display) => h('p', { class: 'aiko-key', 'aria-label': 'あいことば' },
+  String(display || '').split('・').map((w, i) => [i ? h('span', { class: 'aiko-dot' }, '・') : null, h('span', { class: 'aiko-w' }, w)]));
+const errText = (e) => ({
+  nokey: 'このあいことばは見つかりません。電子カルテの文字を確かめてください。',
+  code: '職員用コードが違います。',
+  net: 'インターネットにつながりません。電波のある所で、もう一度ためしてください。',
+  limit: '今日はこれ以上作れません。明日もう一度ためしてください。',
+  busy: '混み合っています。少し待って、もう一度ためしてください。',
+}[e] || 'うまくいきませんでした。少し待って、もう一度ためしてください。');
+const okModal = (title, ...kids) => modal(h('h2', { class: 'adult' }, title), ...kids, h('div', { class: 'row center' }, h('button', { class: 'btn primary', onclick: closeModal }, '閉じる')));
+// この端末に 何か ある か（進み具合 または じぶんノート）
+const hasLocal = () => S.exp > 0 || S.emoSeen.length > 0 || S.scenesDone.length > 0 || S.stickers.length > 0
+  || !!S.nick || S.foods.length > 0 || S.plays.length > 0 || S.hard.length > 0 || S.calm.length > 0 || S.avatar >= 0 || S.color >= 0;
+function syncStatus() {
+  const I = Sync.info();
+  if (I.err === 'nokey') return h('p', { class: 'hint' }, 'このあいことばは置き場に見つかりません。カルテの文字を確かめて、入れ直してください。');
+  if (I.dirty) return h('p', { class: 'muted' }, 'まだ送っていない進み具合があります。電波がつながると自動で送ります。');
+  if (I.lastOk) return h('p', { class: 'muted' }, `進み具合は送ってあります（最後に確かめた日時 ${fmtWhen(I.lastOk)}）。`);
+  return null;
+}
+function aikoPanel() {
+  if (!Sync.enabled()) return h('section', { class: 'panel' }, h('h2', {}, 'あいことば'), h('p', { class: 'muted' }, '準備中です。'));
+  const I = Sync.info();
+  if (!I.key) {
+    return h('section', { class: 'panel' }, h('h2', {}, 'あいことば'),
+      h('p', {}, 'あいことばを入れると、進み具合が会社の置き場に送られ、支援者がどの端末からでも続きを呼び出せます。わたしの ミカタと同じあいことばが使えます。'),
+      h('div', { class: 'row' },
+        h('button', { class: 'btn small primary', onclick: () => go('aikotoba') }, 'あいことばを入れる'),
+        h('button', { class: 'btn small', onclick: confirmCreate }, '新しく作る（はじめての人）')));
+  }
+  return h('section', { class: 'panel' }, h('h2', {}, 'あいことば'),
+    h('p', { class: 'muted' }, 'この端末のあいことば'), keyBox(I.display), syncStatus(),
+    h('div', { class: 'row' },
+      h('button', { class: 'btn small primary', onclick: () => go('aikotoba') }, '別の人に切り替える'),
+      h('button', { class: 'btn small', onclick: confirmForget }, 'この端末から外す')));
+}
+function askKeep() {
+  return new Promise((resolve) => {
+    modal(h('h2', { class: 'adult' }, 'この端末の進み具合'),
+      h('p', { class: 'adult' }, `この端末には、進み具合（レベル ${level(S.exp)}）やじぶんノートがあります。この人のものとして残しますか？`),
+      h('p', { class: 'muted adult' }, '支援者の端末で見本を見せたときのものなら「残さない」を選んでください（この端末の進み具合とノートは消えます）。'),
+      h('div', { class: 'row center' },
+        h('button', { class: 'btn', onclick: () => { closeModal(); resolve(false); } }, '残さない'),
+        h('button', { class: 'btn primary', onclick: () => { closeModal(); resolve(true); } }, '残す')));
+  });
+}
+// よびだす。前の あいことばが あった（職員の iPad で 次の 子へ）なら、ノートも ふくめて この端末を まっさらに してから
+async function useKey(key) {
+  await Sync.idle(); // 送って いる さいちゅうなら まつ（前の 子の 分を 次の 子に まぜない）
+  const prev = Sync.info().key;
+  if (prev && Sync.info().dirty) await Sync.sync().catch(() => {});
+  if (prev && Sync.info().dirty) return { ok: false, err: 'pending' };
+  let keep = false;
+  if (!prev && hasLocal()) keep = await askKeep();
+  const snapshot = S;
+  if (prev || !keep) clearLocal();
+  const r = await Sync.lookup(key, keep, S.exp).catch(() => ({ ok: false, err: 'net' }));
+  if (!r.ok && (prev || !keep)) { S = snapshot; store(S); } // 呼び出せなかったら もとに もどす
+  return r;
+}
+function confirmCreate() {
+  // 職員用コードは 職員だけが 知って いる（子どもが うっかり 作りなおさない ように）
+  const codeIn = h('input', { type: 'text', inputmode: 'numeric', maxlength: '8', autocomplete: 'off', class: 'code-input', 'aria-label': '職員用コード' });
+  modal(h('h2', { class: 'adult' }, '新しいあいことばを作りますか？'),
+    h('p', { class: 'adult' }, 'あいことばは1人に1つです。作ったら変えません。わたしの ミカタで作ったあいことばがある人は、作らずにそれを入れてください。'),
+    h('label', { class: 'field adult' }, h('span', {}, '職員用コード（6けた）'), codeIn),
+    h('div', { class: 'row center' },
+      h('button', { class: 'btn', onclick: closeModal }, 'やめる'),
+      h('button', { class: 'btn primary', onclick: async (e) => {
+        e.currentTarget.disabled = true;
+        const r = await Sync.create(codeIn.value).catch(() => ({ ok: false, err: 'net' }));
+        if (!r.ok) { okModal('作れませんでした', h('p', { class: 'adult' }, errText(r.err))); return; }
+        const lk = await useKey(r.key);
+        modal(h('h2', { class: 'adult' }, 'あいことばができました'), keyBox(r.display),
+          h('p', { class: 'adult' }, '支援者は、このあいことばを電子カルテに書いてください。ご家族にも控えてもらってください。'),
+          lk.ok ? null : h('p', { class: 'hint' }, 'この端末への登録はまだです。「あいことばを入れる」から、上のあいことばを入れてください。'),
+          h('div', { class: 'row center' }, h('button', { class: 'btn primary', onclick: () => { closeModal(); draw('parent'); } }, 'カルテに書いた')));
+      } }, '作る')));
+}
+function confirmForget() {
+  const I = Sync.info();
+  modal(h('h2', { class: 'adult' }, 'この端末からあいことばを外しますか？'),
+    h('p', { class: 'adult' }, 'この端末の進み具合とノートは消えます。置き場の進み具合は残り、あいことばを入れればまた続きから始められます。'),
+    I.dirty ? h('p', { class: 'hint' }, 'まだ送っていない進み具合があります。外すと消えます。電波のある所で送ってから外すのがおすすめです。') : null,
+    h('div', { class: 'row center' },
+      h('button', { class: 'btn', onclick: closeModal }, 'やめる'),
+      h('button', { class: 'btn danger', onclick: () => { Sync.forget(); clearLocal(); closeModal(); draw('parent'); } }, '外す')));
+}
+ROUTES.aikotoba = () => {
+  const input = h('input', { type: 'text', class: 'aiko-input', placeholder: '例）さくら・みかん・つばめ・くじら', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
+  const msg = h('p', { class: 'hint', hidden: true });
+  const btn = h('button', { class: 'btn primary wide', onclick: async () => {
+    msg.hidden = true;
+    if (!input.value.trim()) { msg.hidden = false; msg.textContent = 'あいことばを入れてください。'; return; }
+    btn.disabled = true;
+    const r = await useKey(input.value);
+    btn.disabled = false;
+    if (!r.ok) { msg.hidden = false; msg.textContent = r.err === 'pending' ? 'まだ送っていない進み具合があります。電波のある所で送ってから切り替えてください。' : errText(r.err); return; }
+    go('title', null, true);
+  } }, '呼び出す');
+  return h('div', { class: 'screen adult form' }, bar('あいことばを入れる'),
+    h('p', {}, '電子カルテに書いてあるあいことば（4つの言葉）を入れてください。わたしの ミカタと同じあいことばです。区切りは「・」でも空白でも、なくてもかまいません。'),
+    h('label', { class: 'field' }, h('span', {}, 'あいことば'), input), msg, btn,
+    h('p', { class: 'muted' }, '置き場に送るのは進み具合だけです。じぶんノートの内容は送りません。'));
+};
+
 // ---------- はじまり ----------
+Sync.bind(() => S, (v) => { S = normalize(v); store(S); });
+if (Sync.info().key) Sync.sync().then((ok) => { if (ok && app.dataset.screen === 'title') draw('title'); }).catch(() => {});
 history.replaceState({ name: 'title' }, '');
 draw('title');
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
-window.__app = { get S() { return S; }, set S(v) { S = normalize(v); save(); }, go, award };
+window.__app = { get S() { return S; }, set S(v) { S = normalize(v); save(); }, go, award, Sync };

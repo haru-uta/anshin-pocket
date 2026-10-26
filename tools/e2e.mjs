@@ -4,6 +4,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
+import { createRequire } from 'node:module';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/(\w:)/, '$1')), '..');
 const OUT = path.join(ROOT, 'out', 'e2e', new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19));
@@ -11,7 +12,18 @@ fs.mkdirSync(OUT, { recursive: true });
 const BROWSER = process.env.E2E_BROWSER || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.webmanifest': 'application/manifest+json' };
 
+// 進み具合の置き場（GAS）の にせ物。本物と 同じ コード（watashi-no-mikata-gas）を node で うごかす
+const { makeGas } = createRequire(import.meta.url)(path.join(ROOT, '..', 'watashi-no-mikata-gas', 'tests', 'fake-gas.cjs'));
+const store = makeGas();
 const server = http.createServer((req, res) => {
+  const u = new URL(req.url, 'http://x');
+  if (u.pathname === '/config.js') { res.writeHead(200, { 'content-type': 'text/javascript' }); return res.end("export const STORE_URL = '/__store';\n"); }
+  if (u.pathname === '/__store') {
+    let body = '';
+    req.on('data', (c) => { body += c; });
+    req.on('end', () => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(store.sb.doPost({ postData: { contents: body } }).body); });
+    return;
+  }
   const p = path.join(ROOT, decodeURIComponent(new URL(req.url, 'http://x').pathname));
   const file = fs.existsSync(p) && fs.statSync(p).isDirectory() ? path.join(p, 'index.html') : p;
   if (!file.startsWith(ROOT) || !fs.existsSync(file)) { res.writeHead(404); return res.end(); }
@@ -249,27 +261,80 @@ for (const v of VIEWS.filter((x) => !only || x.tag === only)) {
   });
   await step(`${v.tag} あいことば`, async () => {
     await page.goto(BASE, { waitUntil: 'networkidle0' });
-    const before = await state(page);
     await page.$eval('.parent-btn', (e) => e.scrollIntoView({ block: 'center' }));
-    const h = await page.$('.parent-btn');
-    const b = await h.boundingBox();
-    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await page.mouse.down();
+    const hb = await (await page.$('.parent-btn')).boundingBox();
+    await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2); await page.mouse.down();
     await new Promise((r) => setTimeout(r, 1700)); await page.mouse.up();
     if ((await page.evaluate(() => document.getElementById('app').dataset.screen)) !== 'parent') throw new Error('ながおしで ひらかない');
     await shot(page, T('おとな'));
-    const code = await page.$eval('[data-testid=code]', (e) => e.textContent);
-    await click(page, 'セーブを消す'); await shot(page, T('おとな_けす')); await click(page, '消す');
-    if ((await state(page)).exp !== 0) throw new Error('けせない');
-    // べつの 端末の つもりで いれる（まちがい → ただしい）
+    if (process.env.E2E_BASE) return; // 公開版では 本物の 置き場に 作らない（tools/live-aikotoba.mjs で べつに 確かめる）
+    const before = await state(page);
+    if (!before.exp || !before.nick) throw new Error('この端末に 進み具合と ノートが ない（前の 試験の 前提）');
+    // 作る（まちがった コード → ただしい コード）→ この端末の 物を 残す
+    await click(page, '新しく作る');
+    await page.type('.modal .code-input', '000000'); await click(page, '作る');
+    await new Promise((r) => setTimeout(r, 400));
+    if (!/職員用コードが違います/.test(await page.$eval('.modal', (e) => e.textContent))) throw new Error('違う 職員用コードが とおった');
+    await click(page, '閉じる');
+    await click(page, '新しく作る');
+    await page.type('.modal .code-input', '123456'); await shot(page, T('おとな_作る')); await click(page, '作る');
+    await new Promise((r) => setTimeout(r, 500));
+    await shot(page, T('おとな_残すか')); await click(page, '残す');
+    await new Promise((r) => setTimeout(r, 800));
+    const display = await page.$eval('.modal .aiko-key', (e) => e.textContent);
+    await shot(page, T('おとな_できた')); await click(page, 'カルテに書いた');
+    const row = store.rows.find((r) => r[1] === display);
+    const saved = JSON.parse(row[4]).anshin;
+    if (!saved || saved.exp !== before.exp) throw new Error(`置き場の スターが ちがう: ${JSON.stringify(saved)}`);
+    if (JSON.stringify(store.rows).includes(before.nick)) throw new Error('なまえが 置き場に 入った');
+    if ((await state(page)).nick !== before.nick) throw new Error('この端末の ノートが きえた');
+    await shot(page, T('おとな_あり'));
+    // 練習すると 置き場に とどく
+    await page.evaluate(() => window.__app.award(5));
+    await new Promise((r) => setTimeout(r, 3500));
+    const exp2 = JSON.parse(store.rows.find((r) => r[1] === display)[4]).anshin.exp;
+    if (exp2 !== before.exp + 5) throw new Error(`練習が とどかない: ${exp2}`);
+    // 職員の iPad: べつの 端末で よびだす → 進み具合は でる、ノートは でない
+    const ctx2 = await browser.createBrowserContext();
+    const p2 = await ctx2.newPage(); await p2.setViewport(v);
+    await p2.goto(BASE, { waitUntil: 'networkidle0' });
+    await p2.evaluate(() => { window.__app.S = { ...window.__app.S, nick: 'みほん', exp: 3 }; }); // 見本で さわった あと
+    await p2.evaluate(() => window.__app.go('aikotoba'));
+    await p2.type('.aiko-input', display.replace(/・/g, ' '));
+    await click(p2, '呼び出す');
+    await new Promise((r) => setTimeout(r, 400));
+    await shot(p2, T('職員_のこすか')); await click(p2, '残さない');
+    await new Promise((r) => setTimeout(r, 800));
+    const s2 = await p2.evaluate(() => window.__app.S);
+    if (s2.exp !== before.exp + 5) throw new Error(`職員の 端末で スターが ちがう: ${s2.exp}`);
+    if (s2.nick) throw new Error(`職員の 端末に ノートの なまえ: ${s2.nick}`);
+    await shot(p2, T('職員_タイトル'));
+    // 2つの 端末で 同じ ころに スターを もらう → 両方 足される
+    await page.evaluate(() => window.__app.award(2));
+    await p2.evaluate(() => window.__app.award(4));
+    await new Promise((r) => setTimeout(r, 4000));
+    const both = JSON.parse(store.rows.find((r) => r[1] === display)[4]).anshin.exp;
+    if (both !== before.exp + 11) throw new Error(`2つの 端末の スターが 足されない: ${both}`);
+    await p2.evaluate(() => window.__app.Sync.sync()); await page.evaluate(() => window.__app.Sync.sync());
+    if ((await p2.evaluate(() => window.__app.S.exp)) !== before.exp + 11 || (await state(page)).exp !== before.exp + 11) throw new Error('端末の スターが そろわない');
+    // 2人めの 子へ 切り替え（わたしの ミカタで 作った あいことば）→ 前の 子の 物が のこらない
+    const other = store.post({ a: 'new', code: '123456' });
+    await p2.evaluate(() => window.__app.go('aikotoba'));
+    await p2.type('.aiko-input', other.display);
+    await click(p2, '呼び出す');
+    await new Promise((r) => setTimeout(r, 800));
+    const s3 = await p2.evaluate(() => window.__app.S);
+    if (s3.exp !== 0 || s3.emoSeen.length) throw new Error(`前の 子の 進み具合が のこった: ${JSON.stringify(s3)}`);
+    // 外す
+    await p2.evaluate(() => window.__app.go('parent'));
+    await click(p2, 'この端末から外す'); await click(p2, '外す', '.modal button');
+    if ((await p2.evaluate(() => window.__app.Sync.info().key))) throw new Error('外れない');
+    await ctx2.close();
+    // もとの 端末で はじめから → あいことばも 外れる
     await page.evaluate(() => window.__app.go('parent'));
-    await page.type('.code-in', code.replace('あ', 'い').slice(0, 30));
-    await click(page, '読み込む'); await shot(page, T('おとな_まちがい'));
-    await page.$eval('.code-in', (e) => (e.value = ''));
-    await page.type('.code-in', code);
-    await click(page, '読み込む'); await shot(page, T('おとな_つづき')); await click(page, '続きから始める');
-    const after = await state(page);
-    if (JSON.stringify(after) !== JSON.stringify(before)) throw new Error('あいことばで もどらない');
-    await shot(page, T('タイトル_つづき'));
+    await click(page, 'セーブを消す'); await click(page, '消す');
+    if ((await state(page)).exp !== 0 || (await page.evaluate(() => window.__app.Sync.info().key))) throw new Error('はじめからで 消えない');
+    await shot(page, T('タイトル_はじめから'));
   });
   await step(`${v.tag} 文字を大きく`, async () => {
     await page.evaluate(() => { localStorage.setItem('anshin-pocket-settings', JSON.stringify({ big: true })); });

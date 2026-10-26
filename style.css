@@ -313,3 +313,11 @@ body.big .sub2 { grid-template-columns: 1fr; }
   .bar, .row, .slot.empty { display: none !important; }
   body { background: #fff; }
 }
+
+/* あいことば（わたしの ミカタと 同じ） */
+.aiko-key { margin: 4px 0 8px; font-family: var(--round); font-size: 1.35em; font-weight: 900; color: var(--sage-dd); letter-spacing: .04em; line-height: 1.5; }
+.aiko-w { white-space: nowrap; }
+.aiko-dot { color: var(--muted); }
+.form .field, .modal .field { display: flex; flex-direction: column; gap: 4px; font-weight: 700; margin: 8px 0; }
+.form .field input, .modal .field input { font: inherit; font-size: 1.1em; padding: 10px 12px; min-height: 50px; border-radius: 14px; border: 0; background: #fff; box-shadow: 0 0 0 2px var(--line) inset; }
+.modal .field input { letter-spacing: .1em; }
