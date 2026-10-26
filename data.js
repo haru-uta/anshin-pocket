@@ -1,19 +1,31 @@
 // 文はぜんぶ ひらがな＋わかちがき。たとえ話・皮肉は つかわない（docs/spec.md「守ること」）。
 
+// いっしょに れんしゅう する なかま。art/dogs/<id>_<きもち>.png。dog: true は いぬ（しっぽの 文を つかう）。
+// 2026-10-26 代表「どうぶつを たくさん ふやして」。ならびは あとに たすだけ（ほぞん した 番号が ずれない ように）。
 export const DOGS = [
-  { id: 'molly', name: 'モリー', kind: 'シュナウザー' },
-  { id: 'shiba', name: 'こむぎ', kind: 'しばいぬ' },
-  { id: 'poodle', name: 'ミルク', kind: 'トイプードル' },
-  { id: 'dachs', name: 'ココア', kind: 'ダックスフンド' },
+  { id: 'molly', name: 'モリー', kind: 'シュナウザー', dog: true },
+  { id: 'shiba', name: 'こむぎ', kind: 'しばいぬ', dog: true },
+  { id: 'poodle', name: 'ミルク', kind: 'トイプードル', dog: true },
+  { id: 'dachs', name: 'ココア', kind: 'ダックスフンド', dog: true },
+  { id: 'cat', name: 'ミケ', kind: 'ねこ' },
+  { id: 'rabbit', name: 'ユキ', kind: 'うさぎ' },
+  { id: 'bear', name: 'くるみ', kind: 'くま' },
+  { id: 'panda', name: 'ササ', kind: 'パンダ' },
+  { id: 'fox', name: 'コン', kind: 'きつね' },
+  { id: 'hamster', name: 'ひまわり', kind: 'ハムスター' },
+  { id: 'sheep', name: 'モコ', kind: 'ひつじ' },
+  { id: 'elephant', name: 'パオ', kind: 'ぞう' },
 ];
 
-// see = からだの どこを みれば わかるか / tip = その きもちの ときに できること
+// see = からだの どこを みれば わかるか（いぬ）。seeAny = いぬ いがいの なかま（しっぽの 文を つかわない） / tip = その きもちの ときに できること
 export const EMOTIONS = [
   { id: 'happy', word: 'うれしい', color: '#f4b942',
     see: 'しっぽを ふって いるよ。くちが にこっと あいて いるよ。',
+    seeAny: 'くちが にこっと あいて いるよ。めが きらきら して、からだが はずんで いるよ。',
     tip: 'うれしい ときは 「うれしい！」と いって いいよ。' },
   { id: 'scared', word: 'こわい', color: '#8a9bd6',
     see: 'みみが うしろに ぺたんと して いるよ。しっぽを あしの あいだに いれて、からだを ちいさく して いるよ。',
+    seeAny: 'みみが うしろに ぺたんと して いるよ。からだを ちいさく して、めが まるく なって いるよ。',
     tip: 'こわい ときは、おとなに 「こわい」と いって いいよ。てを つないで もらおう。' },
   { id: 'iya', word: 'いや', color: '#e07a5f',
     see: 'かおを よこに むけて いるよ。まえあしを まえに だして いるよ。',

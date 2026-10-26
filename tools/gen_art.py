@@ -12,6 +12,19 @@ STYLE = ('Style exactly like the reference image: black brush-pen lines with lig
 DOG = ('Draw ONE character sheet: 6 panels in a 2-column x 3-row grid with the SAME 6 poses and emotions, in the same order, '
        'as the reference sheet (happy, scared, dislikes it, sad, surprised, calm). Whole dog in each panel, fully inside it, '
        'wide white gaps between panels, no panel borders, no ground shadows, no motion lines. The dog is {d}. ' + STYLE)
+# 2026-10-26 代表「トイプードルがモリーの色違いなだけ。動物をたくさん増やして」。
+# 見本の表は 絵の描き方と 6つの並びだけに使い、からだの形は まねさせない。
+ANIMAL = ('Draw ONE character sheet: 6 panels in a 2-column x 3-row grid, wide white gaps between panels, no panel borders, '
+          'no ground shadows, no motion lines. The character is {d}. It must look clearly and unmistakably like that animal with its own '
+          'body shape, face, ears and tail. Do NOT copy the reference dog\'s shape, fur, face or poses: the reference is ONLY for the '
+          'drawing style and the 2x3 layout. The whole animal in each panel, fully inside it, facing the viewer at three-quarter view. '
+          'Emotions must be very clear through BODY LANGUAGE so a young child can tell them apart, in this order (left to right, top to bottom): '
+          '1 HAPPY: big open smile, bright eyes, bouncy posture, tail up if it has one. '
+          '2 SCARED: ears flat back, body crouched small, eyes wide, leaning away. '
+          '3 DISLIKES IT / NO THANK YOU: head turned away, one front paw raised as if pushing away, mouth closed tight. '
+          '4 SAD: head low, ears drooping, eyes looking down. '
+          '5 SURPRISED: eyes very round, ears straight up, mouth a small O, body slightly jumped back. '
+          '6 CALM / RELAXED: lying down comfortably, eyes half closed, gentle smile. ' + STYLE)
 CHILD = ('the same child in every panel: about 7 years old, short dark hair, yellow T-shirt and navy shorts, gender-neutral')
 SCENE = ('Draw ONE image: 6 separate vignette illustrations in a 2-column x 3-row grid, each vignette a rounded rectangle '
          'with its own soft pale background, wide pure white gutters between them, all the same size. ' + CHILD + '. '
@@ -39,7 +52,18 @@ JOBS = {
         'home screen. Black brush-pen lines with soft watercolor. No text, no letters, no rounded corners, no border.'),
     'dog_shiba': ('ref_sheet', DOG.format(d='a Shiba Inu with red-orange and cream coat, curled tail, wearing a pale coral bandana')),
     'dog_poodle': ('ref_sheet', DOG.format(d='a cream-colored Toy Poodle with curly fur, wearing a pale pink bandana')),
-    'dog_dachs': ('ref_sheet', DOG.format(d='a chocolate-and-tan Miniature Dachshund with long ears, wearing a pale yellow bandana')),
+    'animal_poodle': ('ref_sheet', ANIMAL.format(d='a fluffy cream-white Toy Poodle (a different breed from the reference): tightly curled fur, '
+        'a round pom-pom topknot on top of the head, long round fluffy ears, a short tail ending in a round pom-pom, slim legs with fluffy '
+        'pom-pom cuffs at the ankles, a slim face with a clipped muzzle, wearing a pale pink bandana')),
+    'animal_cat': ('ref_sheet', ANIMAL.format(d='a calico cat (white with orange and black patches), pointed ears, long thin tail, whiskers, wearing a pale lavender bandana')),
+    'animal_rabbit': ('ref_sheet', ANIMAL.format(d='a white rabbit with long upright ears with pink insides, a small round fluffy tail, wearing a pale sky-blue bandana')),
+    'animal_bear': ('ref_sheet', ANIMAL.format(d='a brown bear cub with small round ears and a light tan muzzle, wearing a pale orange bandana')),
+    'animal_panda': ('ref_sheet', ANIMAL.format(d='a giant panda cub (black and white, black eye patches, round black ears), wearing a pale mint bandana')),
+    'animal_fox': ('ref_sheet', ANIMAL.format(d='a red fox cub with big pointed ears, a white chest and a big fluffy white-tipped tail, wearing a pale yellow bandana')),
+    'animal_hamster': ('ref_sheet', ANIMAL.format(d='a golden hamster with chubby round cheeks, tiny round ears and a white belly, wearing a tiny pale red bandana')),
+    'animal_sheep': ('ref_sheet', ANIMAL.format(d='a fluffy white lamb with a soft black face, black legs and floppy ears, wearing a pale green bandana')),
+    'animal_elephant': ('ref_sheet', ANIMAL.format(d='a small grey baby elephant with big floppy ears, a short trunk and a thin tail, wearing a pale peach bandana')),
+    'dog_dachs':('ref_sheet', DOG.format(d='a chocolate-and-tan Miniature Dachshund with long ears, wearing a pale yellow bandana')),
     'scene_hospital': ('ref', SCENE.format(p='1 a parent hands a card at a clinic reception desk, the child stands beside; '
         '2 the child sits in a waiting room holding a small plush toy; 3 a nurse at a door calls, the child raises a hand; '
         '4 the child enters a doctor\'s exam room and bows to a kind doctor; 5 the doctor listens to the child\'s chest with a stethoscope; '

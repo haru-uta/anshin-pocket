@@ -30,6 +30,8 @@ function pic(src, emoji, cls = '', alt = '') {
   img.onerror = () => (window.__missing ||= []).push(src) && img.replaceWith(h('span', { class: cls + ' emoji', 'aria-hidden': 'true' }, emoji || '❓'));
   return img;
 }
+// いぬ いがいは しっぽの 文を つかわない
+const seeOf = (e) => (DOGS[S.dog].dog ? e.see : e.seeAny || e.see);
 const dogImg = (emo, cls = 'dog') => pic(`art/dogs/${DOGS[S.dog].id}_${emo}.png`, '🐶', cls, `${DOGS[S.dog].name}（${EMOTIONS.find((e) => e.id === emo)?.word || ''}）`);
 const itemImg = (it, cls = 'icon') => pic(`art/items/${it.id}.png`, it.emoji, cls, '');
 const avatarImg = (i, cls = 'avatar') => (i < 0 ? h('span', { class: cls + ' emoji' }, '🙂') : pic(`art/avatars/a${i}.png`, '🙂', cls, 'じぶん'));
@@ -248,13 +250,13 @@ ROUTES.title = () => {
     h('div', { class: 'hello' }, dogImg('happy', 'dog greet'),
       h('p', { class: 'bubble' }, `${name}こんにちは！ ${DOGS[S.dog].name}だよ。`, h('br'), 'きょうは なにを する？')),
     h('nav', { class: 'menu4' },
-      menuBtn('きもちを よもう', 'いぬの かおを みてみよう', 'tile_emotions', 'emotions', 'c1'),
+      menuBtn('きもちを よもう', 'なかまの かおを みてみよう', 'tile_emotions', 'emotions', 'c1'),
       menuBtn('れんしゅう しよう', 'びょういんや はいしゃ', 'tile_practice', 'scenes', 'c2'),
       menuBtn('じぶん ノート', 'すきな ことを かこう', 'tile_note', 'note', 'c3'),
       menuBtn('きょうの よてい', 'えで ならべよう', 'tile_plan', 'plan', 'c4')),
     h('div', { class: 'sub2' },
       h('button', { class: 'wide-card', onclick: () => go('shop') }, pic('art/ui/tile_shop.jpg', '', 'wide-img'), h('span', {}, h('b', {}, 'ショップ'), h('small', {}, 'スターで かえるよ'))),
-      h('button', { class: 'wide-card', onclick: () => go('dogs') }, dogImg('happy', 'wide-img dogface'), h('span', {}, h('b', {}, 'いぬを えらぶ'), h('small', {}, `いまは ${DOGS[S.dog].name}`)))),
+      h('button', { class: 'wide-card', onclick: () => go('dogs') }, dogImg('happy', 'wide-img dogface'), h('span', {}, h('b', {}, 'なかまを えらぶ'), h('small', {}, `いまは ${DOGS[S.dog].name}`)))),
     h('button', { class: 'parent-btn', ...hold }, ic('gear'), 'おうちの ひと・スタッフ', h('small', {}, '（ながおし）')));
 };
 function menuBtn(label, sub, tile, route, cls) {
@@ -273,9 +275,9 @@ function longPress(fn) {
   return { onpointerdown: start, onpointerup: stop, onpointerleave: stop, onpointercancel: stop, oncontextmenu: (e) => e.preventDefault() };
 }
 
-// ---------- いぬを えらぶ ----------
-ROUTES.dogs = () => h('div', { class: 'screen' }, bar('いぬを えらぶ'),
-  h('p', { class: 'lead' }, 'いっしょに れんしゅう する いぬを えらんでね。'),
+// ---------- なかまを えらぶ ----------
+ROUTES.dogs = () => h('div', { class: 'screen' }, bar('なかまを えらぶ'),
+  h('p', { class: 'lead' }, 'いっしょに れんしゅう する なかまを えらんでね。'),
   h('div', { class: 'grid2' }, DOGS.map((d, i) => h('button', {
     class: 'card pick' + (S.dog === i ? ' on' : ''), 'aria-pressed': S.dog === i ? 'true' : 'false',
     onclick: () => { S.dog = i; save(); chime('soft'); speak(`${d.name}だよ。よろしくね`); go('dogs', null, true); },
@@ -284,7 +286,7 @@ ROUTES.dogs = () => h('div', { class: 'screen' }, bar('いぬを えらぶ'),
 // ---------- きもちを よもう ----------
 ROUTES.emotions = () => h('div', { class: 'screen' }, bar('きもちを よもう'),
   h('div', { class: 'hello small' }, dogImg('calm', 'dog mid'),
-    h('p', { class: 'bubble' }, 'いぬの からだを よく みると、きもちの ヒントが あるよ。')),
+    h('p', { class: 'bubble' }, 'からだを よく みると、きもちの ヒントが あるよ。')),
   h('div', { class: 'grid2' },
     h('button', { class: 'card big-choice', onclick: () => go('emoList') }, pic('art/ui/tile_emotions.jpg', '', 'tile-img'), h('b', {}, 'きもちを みる'), h('small', {}, '6つの きもち')),
     h('button', { class: 'card big-choice', onclick: () => go('quiz') }, dogImg('surprised', 'dog mid'), h('b', {}, 'あてっこ'), h('small', {}, 'どの きもちかな？'))));
@@ -297,10 +299,10 @@ ROUTES.emoList = () => h('div', { class: 'screen' }, bar('きもちを みる'),
 ROUTES.emoDetail = (i) => {
   const e = EMOTIONS[i];
   if (!S.emoSeen.includes(i)) { S.emoSeen.push(i); S.emoSeen.sort((a, b) => a - b); setTimeout(() => { award(1); plusToast(1); }, 400); }
-  setTimeout(() => speak(`${e.word}。${e.see}`), 300);
+  setTimeout(() => speak(`${e.word}。${seeOf(e)}`), 300);
   return h('div', { class: 'screen' }, bar(e.word),
     h('div', { class: 'emo-hero', style: `--c:${e.color}` }, dogImg(e.id, 'dog big'), h('h2', { class: 'emo-word' }, e.word)),
-    h('section', { class: 'panel' }, h('h3', {}, ic('eye'), 'ここを みてね'), h('p', {}, e.see), sayBtn(`${e.word}。${e.see}`)),
+    h('section', { class: 'panel' }, h('h3', {}, ic('eye'), 'ここを みてね'), h('p', {}, seeOf(e)), sayBtn(`${e.word}。${seeOf(e)}`)),
     h('section', { class: 'panel soft' }, h('h3', {}, ic('bulb'), 'こんな ときは'), h('p', {}, e.tip), sayBtn(e.tip)),
     h('div', { class: 'row between pager' },
       h('button', { class: 'btn', disabled: i === 0, onclick: () => go('emoDetail', i - 1, true) }, '← まえ'),
@@ -338,7 +340,7 @@ ROUTES.quiz = () => {
           btns.forEach((b) => (b.disabled = true));
           ev.currentTarget.classList.add('right');
           hint.hidden = false; hint.className = 'hint good';
-          hint.textContent = `せいかい！ ${EMOTIONS[ans].word} だね。${EMOTIONS[ans].see}`;
+          hint.textContent = `せいかい！ ${EMOTIONS[ans].word} だね。${seeOf(EMOTIONS[ans])}`;
           speak(`せいかい。${EMOTIONS[ans].word} だね`);
           if (stars) setTimeout(() => { award(stars); plusToast(stars); }, 300);
           nextBtn.hidden = false;
@@ -346,7 +348,7 @@ ROUTES.quiz = () => {
           tries++;
           ev.currentTarget.disabled = true; ev.currentTarget.classList.add('dim');
           hint.hidden = false; hint.className = 'hint';
-          hint.textContent = `もう いちど みて みよう。${EMOTIONS[ans].see.split('。')[0]}。`;
+          hint.textContent = `もう いちど みて みよう。${seeOf(EMOTIONS[ans]).split('。')[0]}。`;
           speak(hint.textContent);
         }
       },
@@ -354,7 +356,7 @@ ROUTES.quiz = () => {
     box.replaceChildren(
       h('p', { class: 'count' }, `${k + 1} / ${order.length}`),
       h('div', { class: 'emo-hero plain' }, dogImg(EMOTIONS[ans].id, 'dog big')),
-      h('p', { class: 'q' }, 'この いぬは どんな きもち かな？'),
+      h('p', { class: 'q' }, `${DOGS[S.dog].name}は どんな きもち かな？`),
       h('div', { class: 'answers' }, btns), hint, nextBtn);
   };
   next();

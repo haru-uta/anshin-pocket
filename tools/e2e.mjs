@@ -129,10 +129,20 @@ for (const v of VIEWS.filter((x) => !only || x.tag === only)) {
 
   await step(`${v.tag} タイトル`, async () => { await shot(page, T('タイトル')); });
   await step(`${v.tag} 犬を えらぶ`, async () => {
-    await click(page, 'いぬを えらぶ'); await shot(page, T('いぬをえらぶ'));
+    await click(page, 'なかまを えらぶ'); await shot(page, T('なかまをえらぶ'));
+    const n = await page.evaluate(() => document.querySelectorAll('.card.pick').length);
+    if (n !== 12) throw new Error(`なかまの かずが 12 で ない: ${n}`);
+    // ねこを えらぶと、きもちの 文に しっぽが でない（いぬ だけの 文）
+    await click(page, 'ミケ');
+    if ((await state(page)).dog !== 4) throw new Error('ねこに ならない');
+    await page.evaluate(() => window.__app.go('emoDetail', 0)); await shot(page, T('ねこ_うれしい'));
+    if (/しっぽ/.test(await page.$eval('.panel p', (e) => e.textContent))) throw new Error('ねこに いぬの しっぽの 文');
+    await page.evaluate(() => window.__app.go('dogs'));
     await click(page, 'こむぎ');
     if ((await state(page)).dog !== 1) throw new Error('しばいぬに ならない');
-    await page.goBack(); await shot(page, T('タイトル_しば'));
+    await page.evaluate(() => window.__app.go('emoDetail', 0));
+    if (!/しっぽ/.test(await page.$eval('.panel p', (e) => e.textContent))) throw new Error('いぬなのに しっぽの 文が ない');
+    await page.goto(BASE, { waitUntil: 'networkidle0' }); await shot(page, T('タイトル_しば'));
   });
   await step(`${v.tag} きもちを みる`, async () => {
     await click(page, 'きもちを よもう'); await shot(page, T('きもち'));
