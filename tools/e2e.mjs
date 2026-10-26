@@ -162,8 +162,11 @@ for (const v of VIEWS.filter((x) => !only || x.tag === only)) {
       }
       await page.evaluate((w) => [...document.querySelectorAll('.answer')].find((b) => b.textContent === w).click(), word);
       if (q === 1) await shot(page, T('あてっこ_せいかい'));
-      await new Promise((r) => setTimeout(r, 2500));
+      await new Promise((r) => setTimeout(r, 600));
       if (await page.$('.modal')) { await shot(page, T('レベルアップ')); await click(page, 'やったね'); }
+      // 正解の あとは 自動で 進まない（ふりかえれる）
+      if (q === 0) { await new Promise((r) => setTimeout(r, 2500)); if ((await page.$eval('.count', (e) => e.textContent)) !== '1 / 6') throw new Error('かってに つぎへ すすんだ'); await shot(page, T('あてっこ_つぎへ')); }
+      await click(page, q < 5 ? 'つぎの もんだい' : 'けっかを みる');
     }
     await shot(page, T('あてっこ_おわり'));
   });

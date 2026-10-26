@@ -1,6 +1,6 @@
 // 一度 ひらいた 画面と 絵を ためて、電波が なくても つかえる ように する。
 // ページ本体は ネットを 先に（あたらしい 版を すぐ とどける）、絵は ためた 物を 先に。
-const CACHE = 'anshin-pocket-v3';
+const CACHE = 'anshin-pocket-v4';
 const CORE = ['./', 'index.html', 'style.css', 'app.js', 'data.js', 'save.js', 'manifest.webmanifest', 'icon-192.png'];
 
 self.addEventListener('install', (e) => {

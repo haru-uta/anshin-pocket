@@ -5,7 +5,7 @@ import { load, store, fresh, normalize, level, wallet, toCode, fromCode, prettyC
 let S = load();
 const SET_KEY = 'anshin-pocket-settings';
 const SET = (() => {
-  const d = { voice: true, sound: true, calm: false, big: false };
+  const d = { voice: true, sound: true, bgm: true, calm: false, big: false };
   try { return { ...d, ...JSON.parse(localStorage.getItem(SET_KEY) || '{}') }; } catch { return d; }
 })();
 const saveSet = () => { try { localStorage.setItem(SET_KEY, JSON.stringify(SET)); } catch { /* 保存できなくても つづける */ } };
@@ -52,6 +52,8 @@ const ICONS = {
   bag: '<path d="M5 8.5h14l-1.2 11.5H6.2z"/><path d="M9 8.5V7a3 3 0 0 1 6 0v1.5"/>',
   paw: '<circle cx="7" cy="9" r="1.9" fill="currentColor"/><circle cx="11" cy="6.5" r="1.9" fill="currentColor"/><circle cx="15.5" cy="7" r="1.9" fill="currentColor"/><circle cx="18.2" cy="10.8" r="1.8" fill="currentColor"/><path d="M8.5 16.5c0-3 2-5 4.2-5s4.3 2.2 4.3 5c0 2-1.6 2.6-4.3 2.1-2.6.5-4.2-.1-4.2-2.1z" fill="currentColor"/>',
   plus: '<path d="M12 6v12M6 12h12"/>',
+  music: '<path d="M9 17.5V6l10-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5" fill="currentColor"/><circle cx="16.5" cy="15.5" r="2.5" fill="currentColor"/>',
+  mute: '<path d="M9 17.5V6l10-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/><path d="M3.5 3.5l17 17"/>',
   star: '<path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z" fill="#f6c343" stroke="#c98a1b" stroke-width="1.3"/>',
 };
 function ic(name, cls = '') {
@@ -91,6 +93,62 @@ function chime(kind = 'ok') {
       o.connect(g).connect(actx.destination); o.start(t); o.stop(t + 0.55);
     });
   } catch { /* 音が でなくても つづける */ }
+}
+
+
+// ---------- BGM（オルゴールの ような 小さな 音楽。音の ファイルは つかわず その場で 作る） ----------
+// 音に びんかんな 子も いるので、小さく・ゆっくり・急に 大きく ならない。タイトルの 音符ボタンと 設定で 止められる。
+const BGM = { on: false, timer: null, next: 0, step: 0, gain: null };
+// ヘ長調 F - Dm - B♭ - C を 1小節ずつ（8分音符 8つ）
+const BGM_CHORDS = [[65, 69, 72, 77], [62, 65, 69, 74], [58, 62, 65, 70], [60, 64, 67, 72]];
+const BGM_MELODY = [77, 0, 76, 74, 72, 0, 74, 0, 74, 0, 72, 69, 70, 0, 69, 0, 70, 0, 69, 67, 65, 0, 67, 0, 72, 0, 70, 69, 67, 0, 0, 0];
+const midiHz = (m) => 440 * 2 ** ((m - 69) / 12);
+function bgmNote(t, f, dur, vol, type = 'sine') {
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.value = f;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(BGM.gain); o.start(t); o.stop(t + dur + 0.05);
+}
+function bgmTick() {
+  const beat = 60 / 72 / 2; // 8分音符
+  while (BGM.next < actx.currentTime + 0.6) {
+    const bar = Math.floor(BGM.step / 8) % 4, i = BGM.step % 8, ch = BGM_CHORDS[bar];
+    if (i === 0) bgmNote(BGM.next, midiHz(ch[0] - 12), beat * 7, 0.22, 'triangle');
+    bgmNote(BGM.next, midiHz(ch[[0, 1, 2, 3, 2, 1, 2, 3][i]]), beat * 3, 0.10);
+    const m = BGM_MELODY[BGM.step % 32];
+    if (m) bgmNote(BGM.next, midiHz(m + 12), beat * 4, 0.12);
+    BGM.next += beat; BGM.step++;
+  }
+}
+function bgmStart() {
+  if (BGM.on || !SET.bgm || document.hidden) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    BGM.gain = actx.createGain();
+    const lp = actx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200;
+    BGM.gain.gain.setValueAtTime(0, actx.currentTime);
+    BGM.gain.gain.linearRampToValueAtTime(0.18, actx.currentTime + 2.5); // ゆっくり 大きく する
+    BGM.gain.connect(lp).connect(actx.destination);
+    BGM.next = actx.currentTime + 0.1; BGM.on = true;
+    BGM.timer = setInterval(bgmTick, 200); bgmTick();
+  } catch { /* 音が でなくても つづける */ }
+}
+function bgmStop() {
+  if (!BGM.on) return;
+  clearInterval(BGM.timer); BGM.on = false;
+  const g = BGM.gain;
+  try { g.gain.cancelScheduledValues(actx.currentTime); g.gain.setValueAtTime(g.gain.value, actx.currentTime); g.gain.linearRampToValueAtTime(0, actx.currentTime + 0.6); } catch { /* なし */ }
+  setTimeout(() => { try { g.disconnect(); } catch { /* なし */ } }, 800);
+}
+const bgmApply = () => (SET.bgm ? bgmStart() : bgmStop());
+// ブラウザは さわる まで 音を ださない ので、さいしょに さわった ときに はじめる
+addEventListener('pointerdown', () => bgmApply(), { once: true });
+document.addEventListener('visibilitychange', () => (document.hidden ? bgmStop() : bgmApply()));
+function bgmBtn() {
+  const b = h('button', { class: 'bgm-btn' + (SET.bgm ? ' on' : ''), 'aria-label': SET.bgm ? 'おんがくを とめる' : 'おんがくを ながす', 'aria-pressed': SET.bgm ? 'true' : 'false',
+    onclick: (e) => { e.stopPropagation(); SET.bgm = !SET.bgm; saveSet(); bgmApply(); b.replaceWith(bgmBtn()); } }, ic(SET.bgm ? 'music' : 'mute'));
+  return b;
 }
 
 // ---------- 画面の きりかえ ----------
@@ -167,7 +225,7 @@ ROUTES.title = () => {
   return h('div', { class: 'screen title' },
     h('header', { class: 'hero' },
       pic('art/ui/hero.jpg', '', 'hero-img', ''),
-      h('div', { class: 'hero-top' }, starChip())),
+      h('div', { class: 'hero-top' }, bgmBtn(), starChip())),
     h('h1', { class: 'logo' },
       h('span', { class: 'logo-sub' }, 'きもちと ばめんの れんしゅう'),
       h('span', { class: 'logo-main' }, 'あんしん', h('span', { class: 'logo-gap' }), 'ポケット')),
@@ -252,6 +310,8 @@ ROUTES.quiz = () => {
     const opts = shuffle([ans, ...shuffle(EMOTIONS.map((_, i) => i).filter((i) => i !== ans)).slice(0, 2)]);
     let tries = 0;
     const hint = h('p', { class: 'hint', hidden: true });
+    const nextBtn = h('button', { class: 'btn primary next-q', hidden: true, onclick: () => { k++; next(); } },
+      k < order.length - 1 ? 'つぎの もんだい' : 'けっかを みる', ic('next'));
     const btns = opts.map((o) => h('button', {
       class: 'btn answer', style: `--c:${EMOTIONS[o].color}`,
       onclick: (ev) => {
@@ -264,8 +324,8 @@ ROUTES.quiz = () => {
           hint.hidden = false; hint.className = 'hint good';
           hint.textContent = `せいかい！ ${EMOTIONS[ans].word} だね。${EMOTIONS[ans].see}`;
           speak(`せいかい。${EMOTIONS[ans].word} だね`);
-          const goNext = () => { k++; next(); };
-          setTimeout(() => (stars ? award(stars, goNext) : goNext()), SET.calm ? 2600 : 2200);
+          if (stars) setTimeout(() => { award(stars); plusToast(stars); }, 300);
+          nextBtn.hidden = false;
         } else {
           tries++;
           ev.currentTarget.disabled = true; ev.currentTarget.classList.add('dim');
@@ -279,7 +339,7 @@ ROUTES.quiz = () => {
       h('p', { class: 'count' }, `${k + 1} / ${order.length}`),
       h('div', { class: 'emo-hero plain' }, dogImg(EMOTIONS[ans].id, 'dog big')),
       h('p', { class: 'q' }, 'この いぬは どんな きもち かな？'),
-      h('div', { class: 'answers' }, btns), hint);
+      h('div', { class: 'answers' }, btns), hint, nextBtn);
   };
   next();
   return h('div', { class: 'screen' }, bar('あてっこ'), box);
@@ -556,7 +616,7 @@ function buy(T, i, tab) {
 // ---------- おうちの ひと・スタッフ ----------
 ROUTES.parent = () => {
   const toggle = (key, label) => h('label', { class: 'switch' },
-    h('input', { type: 'checkbox', checked: SET[key], onchange: (e) => { SET[key] = e.target.checked; saveSet(); document.body.classList.toggle('calm', SET.calm); document.body.classList.toggle('big', SET.big); } }),
+    h('input', { type: 'checkbox', checked: SET[key], onchange: (e) => { SET[key] = e.target.checked; saveSet(); if (key === 'bgm') bgmApply(); document.body.classList.toggle('calm', SET.calm); document.body.classList.toggle('big', SET.big); } }),
     h('span', {}, label));
   const code = toCode(S);
   const copyMsg = h('span', { class: 'muted', role: 'status' }, '');
@@ -566,6 +626,7 @@ ROUTES.parent = () => {
     h('section', { class: 'panel' }, h('h2', {}, '設定'),
       toggle('voice', '文の読み上げ（端末の音声）'),
       toggle('sound', '効果音（小さな音）'),
+      toggle('bgm', 'BGM（小さな音楽）'),
       toggle('calm', '動きを少なくする'),
       toggle('big', '文字を大きくする')),
     h('section', { class: 'panel' }, h('h2', {}, 'あいことば（別の端末で続きから）'),
